@@ -3,10 +3,10 @@ require 'helper'
 class TestCacheBar < Test::Unit::TestCase
   context 'CacheBar' do
 
-    context 'mocking redis' do
+    context 'mocking file cache' do
       setup do
-        @redis = mock
-        HTTParty::HTTPCache.redis = @redis
+        @cache = mock
+        HTTParty::HTTPCache.cache = @cache
       end
 
       context 'with caching on' do
@@ -22,26 +22,26 @@ class TestCacheBar < Test::Unit::TestCase
           end
 
           should "set key with expiration" do
-            @redis.stubs(:exists).returns(false)
-            @redis.expects(:set).with("api-cache:twitter:#{@uri_hash}", @response).returns(true)
-            @redis.expects(:expire).with("api-cache:twitter:#{@uri_hash}", is_a(Integer)).returns(true)
-            @redis.stubs(:hset).returns(true)
+            @cache.stubs(:exists).returns(false)
+            @cache.expects(:set).with("api-cache:twitter:#{@uri_hash}", @response).returns(true)
+            @cache.expects(:expire).with("api-cache:twitter:#{@uri_hash}", is_a(Integer)).returns(true)
+            @cache.stubs(:hset).returns(true)
             TwitterAPI.user_timeline('viget')
           end
 
           should "store a backup" do
-            @redis.stubs(:exists).returns(false)
-            @redis.stubs(:set).returns(true)
-            @redis.stubs(:expire).returns(true)
-            @redis.expects(:hset).with('api-cache:twitter', @uri_hash, @response).returns(true)
+            @cache.stubs(:exists).returns(false)
+            @cache.stubs(:set).returns(true)
+            @cache.stubs(:expire).returns(true)
+            @cache.expects(:hset).with('api-cache:twitter', @uri_hash, @response).returns(true)
             TwitterAPI.user_timeline('viget')
           end
 
           should 'return expected result to PIM class' do
-            @redis.stubs(:exists).returns(false)
-            @redis.stubs(:set).returns(true)
-            @redis.stubs(:expire).returns(true)
-            @redis.stubs(:hset).returns(true)
+            @cache.stubs(:exists).returns(false)
+            @cache.stubs(:set).returns(true)
+            @cache.stubs(:expire).returns(true)
+            @cache.stubs(:hset).returns(true)
             tweets = TwitterAPI.user_timeline('viget')
             assert_kind_of Array, tweets.parsed_response
             assert tweets.parsed_response.present?
@@ -49,8 +49,8 @@ class TestCacheBar < Test::Unit::TestCase
 
           context 'and stored in cache' do
             should 'retrieve response from cache correctly' do
-              @redis.stubs(:exists).returns(true)
-              @redis.expects(:get).with("api-cache:twitter:#{@uri_hash}").returns(@response)
+              @cache.stubs(:exists).returns(true)
+              @cache.expects(:get).with("api-cache:twitter:#{@uri_hash}").returns(@response)
               tweets = TwitterAPI.user_timeline('viget')
               assert_kind_of Array, tweets.parsed_response
               assert tweets.parsed_response.present?
@@ -171,11 +171,11 @@ class TestCacheBar < Test::Unit::TestCase
           end
           
           should 'never try to cache' do
-            @redis.expects(:exists).never
-            @redis.expects(:set).never
-            @redis.expects(:expires).never
-            @redis.expects(:hset).never
-            @redis.expects(:get).never
+            @cache.expects(:exists).never
+            @cache.expects(:set).never
+            @cache.expects(:expires).never
+            @cache.expects(:hset).never
+            @cache.expects(:get).never
             TwitterAPI.update_status('viget', 'My new status.')
           end
           
@@ -188,7 +188,7 @@ class TestCacheBar < Test::Unit::TestCase
       context 'with caching off' do
         setup do
           turn_off_caching
-          @redis.expects(:exists).never
+          @cache.expects(:exists).never
           @uri_hash = '007a3a7aa28b11ef362040283e114f55'
           @response = fixture_file('user_timeline.json')
           VCR.insert_cassette('good_response')
@@ -207,36 +207,34 @@ class TestCacheBar < Test::Unit::TestCase
       end
     end
 
-    context 'connecting to redis' do
+    context 'connecting to file cache' do
       setup do
         VCR.insert_cassette('good_response')
+        @cache = HTTPartyFilecache::FileCache.new('httpcache', "./http-response-cache", 0)
 
-        redis = Redis.new(:host => 'localhost', :port => 6379,
-          :thread_safe => true, :db => '3')
-        @redis = Redis::Namespace.new('httpcache', :redis => redis)
-        HTTParty::HTTPCache.redis = @redis
+        HTTParty::HTTPCache.cache = @cache
 
-        @redis.keys("api-cache*").each do |key|
-          @redis.del(key)
+        @cache.keys("api-cache*").each do |key|
+          @cache.del(key)
         end
       end
 
       should "store its response in the cache" do
-        assert_difference "@redis.keys('api-cache:twitter:*').count", 1 do
+        assert_difference "@cache.keys('api-cache:twitter:*').count", 1 do
           TwitterAPI.user_timeline('viget')
         end
       end
 
       should "store a backup of its response" do
-        assert_difference "@redis.hkeys('api-cache:twitter').count", 1 do
+        assert_difference "@cache.hkeys('api-cache:twitter').count", 1 do
           TwitterAPI.user_timeline('viget')
         end
       end
 
       teardown do
         VCR.eject_cassette
-        @redis.keys("api-cache*").each do |key|
-          @redis.del(key)
+        @cache.keys("api-cache*").each do |key|
+          @cache.del(key)
         end
       end
     end

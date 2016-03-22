@@ -54,7 +54,7 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<webmock>, [">= 0"])
       s.add_development_dependency(%q<vcr>, ["~> 1.11"])
       s.add_development_dependency(%q<mocha>, [">= 0"])
-      s.add_development_dependency(%q<rake>, ["~> 0.8.7"])
+      s.add_development_dependency(%q<rake>, ["~> 0.9.2"])
       s.add_development_dependency(%q<SystemTimer>, [">= 0"])
     else
       s.add_dependency(%q<httparty>, ["~> 0.8.3"])
@@ -66,7 +66,7 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<webmock>, [">= 0"])
       s.add_dependency(%q<vcr>, ["~> 1.11"])
       s.add_dependency(%q<mocha>, [">= 0"])
-      s.add_dependency(%q<rake>, ["~> 0.8.7"])
+      s.add_dependency(%q<rake>, ["~> 0.9.2"])
       s.add_dependency(%q<SystemTimer>, [">= 0"])
     end
   else
@@ -79,7 +79,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<webmock>, [">= 0"])
     s.add_dependency(%q<vcr>, ["~> 1.11"])
     s.add_dependency(%q<mocha>, [">= 0"])
-    s.add_dependency(%q<rake>, ["~> 0.8.7"])
+    s.add_dependency(%q<rake>, ["~> 0.9.2"])
     s.add_dependency(%q<SystemTimer>, [">= 0"])
   end
 end

@@ -9,16 +9,17 @@ rescue Bundler::BundlerError => e
   $stderr.puts "Run `bundle install` to install missing gems"
   exit e.status_code
 end
+
 require 'rake'
 
 require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
-  gem.name = "cachebar"
+  gem.name = "httparty-filecache"
   gem.homepage = "http://github.com/jwtd/httparty-filecache"
   gem.license = "MIT"
-  gem.summary = %Q{A simple API caching layer built on top of HTTParty and the file system}
-  gem.description = %Q{A simple API caching layer built on top of HTTParty and file system}
+  gem.summary = %Q{A simple API caching layer built on top of HTTParty and the file system derived from cachebar}
+  gem.description = %Q{A simple API caching layer built on top of HTTParty and file system derived from cachebar}
   gem.email = "Jordan.Duggan@Gmail.com"
   gem.authors = ["Brian Landau", "David Eisinger", "Jordan Duggan"]
   # dependencies defined in Gemfile
