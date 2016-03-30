@@ -25,7 +25,7 @@ module HTTParty
       if cacheable?
         if response_in_cache?
           log_message("Retrieving response from cache")
-          response_from(response_body_from_cache)
+          response_from_cache
         else
           validate
           begin
@@ -35,8 +35,7 @@ module HTTParty
             httparty_response.parsed_response
             if httparty_response.response.is_a?(Net::HTTPSuccess)
               log_message("Storing good response in cache")
-              store_in_cache(httparty_response.body)
-              store_backup(httparty_response.body)
+              store_in_cache(httparty_response)
               httparty_response
             else
               retrieve_and_store_backup(httparty_response)
@@ -54,29 +53,12 @@ module HTTParty
       end
     end
 
+
     protected
 
+
     def cacheable?
-      HTTPCache.perform_caching && HTTPCache.apis.keys.include?(uri.host) &&
-          http_method == Net::HTTP::Get
-    end
-
-    def response_from(response_body)
-      HTTParty::Response.new(self, OpenStruct.new(:body => response_body), lambda {parse_response(response_body)})
-    end
-
-    def retrieve_and_store_backup(httparty_response = nil)
-      if backup_exists?
-        log_message('using backup')
-        response_body = backup_response
-        store_in_cache(response_body, cache_stale_backup_time)
-        response_from(response_body)
-      elsif httparty_response
-        httparty_response
-      else
-        log_message('No backup and bad response')
-        raise NoResponseError, 'Bad response from API server or timeout occured and no backup was in the cache'
-      end
+      HTTPCache.perform_caching && HTTPCache.apis.keys.include?(uri.host) && http_method == Net::HTTP::Get
     end
 
     def normalized_uri
@@ -92,6 +74,7 @@ module HTTParty
       query.split('&').sort.join('&') unless query.blank?
     end
 
+
     def cache_key_name
       @cache_key_name ||= normalized_uri
     end
@@ -104,8 +87,20 @@ module HTTParty
       cache.exists(cache_key_name)
     end
 
+    def store_in_cache(response, expires = nil)
+      cache.set(cache_key_name, response)
+      #cache.expire(cache_key_name, (expires || HTTPCache.apis[uri.host][cache_key_name][:expire_in]))
+    end
+
+    def response_from_cache
+      response = cache.get(cache_key_name)
+      puts "response_body_from_cache: #{response.class.name}"
+      response
+    end
+
+
     def backup_key
-      "api-cache:#{cache_key_name}"
+      "#{cache_key_name}" # Could prefix this "backup"
     end
 
     def backup_response
@@ -116,22 +111,24 @@ module HTTParty
       cache.exists(backup_key) && cache.hexists(backup_key, uri_hash)
     end
 
-    def response_body_from_cache
-      cache.get(cache_key_name)
+    def store_backup(response)
+      cache.hset(backup_key, uri_hash, response)
     end
 
-    def store_in_cache(response_body, expires = nil)
-      cache.set(cache_key_name, response_body)
-      cache.expire(cache_key_name, (expires || HTTPCache.apis[uri.host][:expire_in]))
+    def retrieve_and_store_backup(httparty_response = nil)
+      if backup_exists?
+        log_message('using backup')
+        response = backup_response
+        store_in_cache(response, cache_stale_backup_time)
+        response_from(response)
+      elsif httparty_response
+        httparty_response
+      else
+        log_message('No backup and bad response')
+        raise NoResponseError, 'Bad response from API server or timeout occured and no backup was in the cache'
+      end
     end
 
-    def store_backup(response_body)
-      cache.hset(backup_key, uri_hash, response_body)
-    end
-
-    def cache_key_name
-      HTTPCache.apis[uri.host][:key_name]
-    end
 
     def log_message(message)
       logger.info("[HTTPCache]: #{message} for #{normalized_uri} - #{uri_hash.inspect}") if logger

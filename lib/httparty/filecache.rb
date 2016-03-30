@@ -1,4 +1,6 @@
-module HTTPartyFilecache
+require 'json'
+
+module HTTParty
 
   class FileCache
 
@@ -29,7 +31,7 @@ module HTTPartyFilecache
     # Set a cache value for the given key. If the cache contains an existing value for the key it will be overwritten.
     def set(key, value)
       path = get_path(key)
-      File.open(path,'w'){ |f| JSON.dump(value, f) }
+      File.open(path,'w'){ |f| f.write JSON.pretty_generate(value) }
     end
 
     # Set a value in a hash (to match Redis interface)
@@ -45,7 +47,6 @@ module HTTPartyFilecache
       if @expiry > 0 && File.exists?(path) && Time.new - File.new(path).mtime >= @expiry
         FileUtils.rm(path)
       end
-
       if File.exists?(path)
         return JSON.parse(IO.read(path))
       else
@@ -54,7 +55,7 @@ module HTTPartyFilecache
     end
 
     # Get a value in a hash (to match Redis interface)
-    def hget(hash_name, key, value)
+    def hget(hash_name, key)
       get("#{hash_name}_#{key}")
     end
 
@@ -100,16 +101,22 @@ module HTTPartyFilecache
     def key_path
       s = @root_dir
       s += "/#{@uri.host}" unless @uri.host.nil?
-      s += "#{@uri.path}" unless @uri.path.nil?
-      puts "Creating file path in cache: #{s}"
+      unless @uri.path.nil?
+        dir  = File.dirname(@uri.path)
+        s += dir
+      end
       FileUtils.mkdir_p(s) unless File.exists?(s)
       return s
     end
 
     def key_file
       s = ''
-      s = @uri.query unless @uri.query.nil?
-      s += @uri.fragment unless @uri.fragment.nil?
+      unless @uri.path.nil?
+        base = File.basename(@uri.path)
+        s += base
+      end
+      s += "_#{@uri.query}" unless @uri.query.nil?
+      s += "_#{@uri.fragment}" unless @uri.fragment.nil?
       s.gsub(/[\?#=&]/, '_').gsub(/%22/, '').gsub(/(%20|,)/, '-')
     end
 

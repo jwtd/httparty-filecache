@@ -13,6 +13,8 @@ if RUBY_VERSION < '1.9'
   end
 end
 require 'httparty/httpcache'
+require 'httparty/filecache'
+
 
 module HTTPartyFileCache
   def self.register_api_to_cache(host, options)
